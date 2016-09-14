@@ -4,6 +4,7 @@
 import sys
 import rospy
 import cv2
+import numpy as np
 from std_msgs.msg import String
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
@@ -37,11 +38,17 @@ class image_converter:
         # print "red",red
         if red > int(blue) + green:
             print "RED DETECTED"
+
+        lower = np.array([0,0,80])
+        upper = np.array([70,70,200])
+    	mask = cv2.inRange(imgOriginal, lower, upper)
+        output = cv2.bitwise_and(imgOriginal, imgOriginal, mask = mask)
+
         imgGrayscale = cv2.cvtColor(imgOriginal, cv2.COLOR_BGR2GRAY)
         imgBlurred = cv2.GaussianBlur(imgGrayscale, (5, 5), 0)
         imgCanny = cv2.Canny(imgBlurred, 100, 200)
 
-        cv2.imshow("Image Window", imgOriginal)
+        cv2.imshow("Image Window", output)
         # cv2.imshow("GrayScale Window", imgGrayscale)
         # cv2.imshow("Blurred Window", imgBlurred)
         # cv2.imshow("CannyEdges Window", imgCanny)
