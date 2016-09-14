@@ -17,19 +17,24 @@ class image_converter:
 
     def callback(self,data):
         try:
-            cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")
+            imgOriginal = self.bridge.imgmsg_to_cv2(data, "bgr8")
+            print imgOriginal[50,50]
         except CvBridgeError as e:
-            print("==[CAMERA MANAGER]==", e)
-        (rows,cols,channels) = cv_image.shape
+            pass
+            #print("==[CAMERA MANAGER]==", e)
+        (rows,cols,channels) = imgOriginal.shape
         if cols > 60 and rows > 60:
-            cv2.circle(cv_image,(50,50),10,255)
-        cv2.imshow("Image Window", cv_image)
-        cv2.waitKey(3)
+            cv2.circle(imgOriginal,(50,50),10,255)
 
-        try:
-            self.image_pub.publish(self.bridge.cv2_to_imgmsg(cv_image, "bgr8"))
-        except CvBridgeError as e:
-            print("==[CAMERA MANAGER]==", e)
+        imgGrayscale = cv2.cvtColor(imgOriginal, cv2.COLOR_BGR2GRAY)
+        imgBlurred = cv2.GaussianBlur(imgGrayscale, (5, 5), 0)
+        imgCanny = cv2.Canny(imgBlurred, 100, 200)
+
+        cv2.imshow("Image Window", imgOriginal)
+        # cv2.imshow("GrayScale Window", imgGrayscale)
+        # cv2.imshow("Blurred Window", imgBlurred)
+        # cv2.imshow("CannyEdges Window", imgCanny)
+        cv2.waitKey(3)
 
 def main(args):
     rospy.init_node('image_converter', anonymous=True)
@@ -37,7 +42,8 @@ def main(args):
     try:
         rospy.spin()
     except KeyboardInterrupt:
-        print("Shutting down")
+        pass
+        #print("Shutting down")
     cv2.destroyAllWindows()
 
 if __name__ == '__main__':
