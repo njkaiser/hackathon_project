@@ -19,37 +19,32 @@ class image_converter:
     def callback(self,data):
         try:
             imgOriginal = self.bridge.imgmsg_to_cv2(data, "bgr8")
-            #print imgOriginal[[50,50]]
         except CvBridgeError as e:
-            pass
-            #print("==[CAMERA MANAGER]==", e)
-        (rows,cols,channels) = imgOriginal.shape
-        if cols > 60 and rows > 60:
-            cv2.circle(imgOriginal,(50,50),10,255)
-
-        blue = imgOriginal[50,50][0]
-        green = imgOriginal[50,50][1]
-        red = imgOriginal[50,50][2]
-        # print "blue",blue,
-        # print "green",green,
-        # # print "red",red
-        # bg_sum = int(blue) + green
-        # print "bg sum",bg_sum,
-        # print "red",red
-        if red > int(blue) + green:
-            print "RED DETECTED"
-
-        lower = np.array([0,0,80])
-        upper = np.array([70,70,200])
-    	mask = cv2.inRange(imgOriginal, lower, upper)
-        output = cv2.bitwise_and(imgOriginal, imgOriginal, mask = mask)
+            print("==[CAMERA MANAGER]==", e)
+        # (rows,cols,channels) = imgOriginal.shape
+        # if cols > 60 and rows > 60:
+        #     cv2.circle(imgOriginal,(50,50),10,255)
 
         imgGrayscale = cv2.cvtColor(imgOriginal, cv2.COLOR_BGR2GRAY)
-        imgBlurred = cv2.GaussianBlur(imgGrayscale, (5, 5), 0)
-        imgCanny = cv2.Canny(imgBlurred, 100, 200)
+        circles = cv2.HoughCircles(imgGrayscale,cv2.cv.CV_HOUGH_GRADIENT,1.2,100)
+        if circles is not None:
+            circles = np.round(circles[0, :]).astype("int")
+            for (x,y,r) in circles:
+                cv2.circle(imgGrayscale, (x, y), r, (0, 255, 0), 4)
 
+        hsv = cv2.cvtColor(imgOriginal, cv2.COLOR_BGR2HSV)
+
+        lower = np.array([0,110,110])
+        upper = np.array([50,255,255])
+    	mask = cv2.inRange(hsv, lower, upper)
+        output = cv2.bitwise_and(imgOriginal, imgOriginal, mask = mask)
+
+        # imgGrayscale = cv2.cvtColor(imgOriginal, cv2.COLOR_BGR2GRAY)
+        # imgBlurred = cv2.GaussianBlur(imgGrayscale, (5, 5), 0)
+        # imgCanny = cv2.Canny(imgBlurred, 100, 200)
+
+        cv2.imshow("GrayScale Window", imgGrayscale)
         cv2.imshow("Image Window", output)
-        # cv2.imshow("GrayScale Window", imgGrayscale)
         # cv2.imshow("Blurred Window", imgBlurred)
         # cv2.imshow("CannyEdges Window", imgCanny)
         cv2.waitKey(3)
