@@ -5,6 +5,7 @@ import sys
 import rospy
 import cv2
 import numpy as np
+import trackbar as tb
 from std_msgs.msg import String
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
@@ -16,6 +17,16 @@ class image_converter:
         self.bridge = CvBridge()
         self.image_sub = rospy.Subscriber("/usb_cam/image_raw",Image,self.callback)
 
+        # create trackbars for color change
+        win = cv2.namedWindow("MyImage")
+        name = "MyImage"
+        cv2.createTrackbar('H_low',name,0,255,tb.nothing)
+        cv2.createTrackbar('S_low',name,113,255,tb.nothing)
+        cv2.createTrackbar('V_low',name,90,255,tb.nothing)
+        cv2.createTrackbar('H_high',name,9,255,tb.nothing)
+        cv2.createTrackbar('S_high',name,255,255,tb.nothing)
+        cv2.createTrackbar('V_high',name,255,255,tb.nothing)
+
     def callback(self,data):
         try:
             imgOriginal = self.bridge.imgmsg_to_cv2(data, "bgr8")
@@ -25,28 +36,25 @@ class image_converter:
         # if cols > 60 and rows > 60:
         #     cv2.circle(imgOriginal,(50,50),10,255)
 
-        imgGrayscale = cv2.cvtColor(imgOriginal, cv2.COLOR_BGR2GRAY)
-        circles = cv2.HoughCircles(imgGrayscale,cv2.cv.CV_HOUGH_GRADIENT,1.2,100)
-        if circles is not None:
-            circles = np.round(circles[0, :]).astype("int")
-            for (x,y,r) in circles:
-                cv2.circle(imgGrayscale, (x, y), r, (0, 255, 0), 4)
+        # imgGrayscale = cv2.cvtColor(imgOriginal, cv2.COLOR_BGR2GRAY)
+        # circles = cv2.HoughCircles(imgGrayscale,cv2.cv.CV_HOUGH_GRADIENT,1.2,100)
+        # if circles is not None:
+        #     circles = np.round(circles[0, :]).astype("int")
+        #     for (x,y,r) in circles:
+        #         cv2.circle(imgGrayscale, (x, y), r, (0, 255, 0), 4)
 
         hsv = cv2.cvtColor(imgOriginal, cv2.COLOR_BGR2HSV)
 
-        lower = np.array([0,110,110])
-        upper = np.array([50,255,255])
+        h_low,s_low,v_low,h_hi,s_hi,v_hi = tb.trackbar("MyImage",imgOriginal)
+
+        lower = np.array([h_low,s_low,v_low])
+        upper = np.array([h_hi,s_hi,v_hi])
+        # lower = np.array([0,100,100])
+        # upper = np.array([50,255,255])
     	mask = cv2.inRange(hsv, lower, upper)
         output = cv2.bitwise_and(imgOriginal, imgOriginal, mask = mask)
 
-        # imgGrayscale = cv2.cvtColor(imgOriginal, cv2.COLOR_BGR2GRAY)
-        # imgBlurred = cv2.GaussianBlur(imgGrayscale, (5, 5), 0)
-        # imgCanny = cv2.Canny(imgBlurred, 100, 200)
-
-        cv2.imshow("GrayScale Window", imgGrayscale)
-        cv2.imshow("Image Window", output)
-        # cv2.imshow("Blurred Window", imgBlurred)
-        # cv2.imshow("CannyEdges Window", imgCanny)
+        cv2.imshow("MyImage", output)
         cv2.waitKey(3)
 
 def main(args):
@@ -55,8 +63,7 @@ def main(args):
     try:
         rospy.spin()
     except KeyboardInterrupt:
-        pass
-        #print("Shutting down")
+        print("Shutting down")
     cv2.destroyAllWindows()
 
 if __name__ == '__main__':
