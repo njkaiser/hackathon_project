@@ -5,8 +5,6 @@ def nothing(x):
     pass
 
 def trackbar(name,image):
-    cv2.imshow('HSV trackbar window',image)
-
     # get current positions of trackbars
     h_low = cv2.getTrackbarPos('H_low',name)
     s_low = cv2.getTrackbarPos('S_low',name)

@@ -9,6 +9,9 @@ import trackbar as tb
 from std_msgs.msg import String
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
+from collections import deque
+
+pts = deque(maxlen=32)
 
 class image_converter:
     def __init__(self):
@@ -43,7 +46,8 @@ class image_converter:
         #     for (x,y,r) in circles:
         #         cv2.circle(imgGrayscale, (x, y), r, (0, 255, 0), 4)
 
-        hsv = cv2.cvtColor(imgOriginal, cv2.COLOR_BGR2HSV)
+        blurred = cv2.GaussianBlur(imgOriginal,(11,11),0)
+        hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
 
         h_low,s_low,v_low,h_hi,s_hi,v_hi = tb.trackbar("MyImage",imgOriginal)
 
@@ -52,8 +56,27 @@ class image_converter:
         # lower = np.array([0,100,100])
         # upper = np.array([50,255,255])
     	mask = cv2.inRange(hsv, lower, upper)
+        mask = cv2.erode(mask, None, iterations=7)
+        mask = cv2.dilate(mask, None, iterations=7)
         output = cv2.bitwise_and(imgOriginal, imgOriginal, mask = mask)
+        outputGrayscale = cv2.cvtColor(output, cv2.COLOR_BGR2GRAY)
+        contours = cv2.findContours(outputGrayscale,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)[0]
 
+        if len(contours) > 0:
+            c = max(contours,key=cv2.contourArea)
+            ((x,y),radius) = cv2.minEnclosingCircle(c)
+            M = cv2.moments(c)
+            center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
+
+            if radius > 10:
+                cv2.circle(imgOriginal,(int(x),int(y)),int(radius),(0,255,0),2)
+                cv2.circle(imgOriginal,center,5,(0,0,255),-1)
+                pts.appendleft(center)
+                for i in np.arange(1,len(pts)):
+                    thickness = int(np.sqrt(32/float(i+1))*2.5)
+                    cv2.line(imgOriginal,pts[i-1],pts[i],(0,0,255),thickness)
+
+        cv2.imshow("Image",imgOriginal)
         cv2.imshow("MyImage", output)
         cv2.waitKey(3)
 
