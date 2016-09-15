@@ -15,7 +15,7 @@ pts = deque(maxlen=32)
 
 class image_converter:
     def __init__(self):
-        self.image_pub = rospy.Publisher("image_topic_2",Image)
+        self.image_pub = rospy.Publisher("image_topic_2", Image, queue_size=10)
 
         self.bridge = CvBridge()
         self.image_sub = rospy.Subscriber("/usb_cam/image_raw",Image,self.callback)
@@ -76,7 +76,8 @@ class image_converter:
                     thickness = int(np.sqrt(32/float(i+1))*2.5)
                     cv2.line(imgOriginal,pts[i-1],pts[i],(0,0,255),thickness)
 
-        cv2.imshow("Image",imgOriginal)
+        flipped = cv2.flip(imgOriginal, 1)
+        cv2.imshow("Image", flipped)
         cv2.imshow("MyImage", output)
         cv2.waitKey(3)
 
