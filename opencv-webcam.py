@@ -6,19 +6,20 @@ import rospy
 import cv2
 import numpy as np
 import trackbar as tb
-from std_msgs.msg import String
+from geometry_msgs.msg import Point
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
 from collections import deque
 
-pts = deque(maxlen=32)
-
 class image_converter:
     def __init__(self):
-        self.image_pub = rospy.Publisher("image_topic_2", Image, queue_size=10)
+        self.image_pub = rospy.Publisher("image_topic_2",Image,queue_size=10)
+        self.movement_data = rospy.Publisher("movement_data",Point,queue_size=10)
 
         self.bridge = CvBridge()
         self.image_sub = rospy.Subscriber("/usb_cam/image_raw",Image,self.callback)
+        self.pts = deque(maxlen=32)
+        self.deltaValues = Point()
 
         # create trackbars for color change
         win = cv2.namedWindow("MyImage")
@@ -26,7 +27,7 @@ class image_converter:
         cv2.createTrackbar('H_low',name,0,255,tb.nothing)
         cv2.createTrackbar('S_low',name,113,255,tb.nothing)
         cv2.createTrackbar('V_low',name,90,255,tb.nothing)
-        cv2.createTrackbar('H_high',name,9,255,tb.nothing)
+        cv2.createTrackbar('H_high',name,7,255,tb.nothing)
         cv2.createTrackbar('S_high',name,255,255,tb.nothing)
         cv2.createTrackbar('V_high',name,255,255,tb.nothing)
 
@@ -66,15 +67,30 @@ class image_converter:
             c = max(contours,key=cv2.contourArea)
             ((x,y),radius) = cv2.minEnclosingCircle(c)
             M = cv2.moments(c)
-            center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
+            ballCenter = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
 
             if radius > 10:
                 cv2.circle(imgOriginal,(int(x),int(y)),int(radius),(0,255,0),2)
-                cv2.circle(imgOriginal,center,5,(0,0,255),-1)
-                pts.appendleft(center)
-                for i in np.arange(1,len(pts)):
-                    thickness = int(np.sqrt(32/float(i+1))*2.5)
-                    cv2.line(imgOriginal,pts[i-1],pts[i],(0,0,255),thickness)
+                cv2.circle(imgOriginal,ballCenter,5,(0,0,255),-1)
+                self.pts.appendleft(ballCenter)
+                # print "Ball Center:",ballCenter,
+                print "Ball Center x:",ballCenter[0],
+                print "Ball Center y:",ballCenter[1],
+                print "Image Center x:",imgOriginal.shape[1]/2,
+                print "Image Center y:",imgOriginal.shape[0]/2
+                self.deltaValues.x = ballCenter[0] - imgOriginal.shape[1]/2 # if this is positive, we want to increase the value of panAngle
+                self.deltaValues.y = imgOriginal.shape[0]/2 - ballCenter[1] # if this is positive, we want to increase the value of tiltAngle
+                if self.deltaValues.x > 640 or self.deltaValues.x < -640:
+                    self.deltaValues.x = 0
+                if self.deltaValues.y > 480 or self.deltaValues.y < -480:
+                    self.deltaValues.y = 0
+                self.deltaValues.x *= (1008/640)
+                self.deltaValues.y *= (1008/480)
+                rospy.loginfo(self.deltaValues)
+                self.movement_data.publish(self.deltaValues)
+                # for i in np.arange(1,len(self.pts)):
+                #     thickness = int(np.sqrt(32/float(i+1))*2.5)
+                #     cv2.line(imgOriginal,self.pts[i-1],self.pts[i],(0,0,255),thickness)
 
         flipped = cv2.flip(imgOriginal, 1)
         cv2.imshow("Image", flipped)
